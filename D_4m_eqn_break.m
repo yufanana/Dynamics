@@ -4,33 +4,30 @@ clear; close all;
 
 L_initial = 1;
 k = [2 2 2 2 2];
+b = [0.1 0.1 0.1 0.1 0.1];
 m = [1 1 1 1];
 initial_conditions = [0 0 0 0 0 0 0 0];
 Fmag = 3;
 
-b_vec = [0.1 0.1 0.5 0.5 0.1];
-
-% b_vec = [0.1 0.1 0.1 0.1 0.1;
-%          0.5 0.5 0.5 0.1 0.1;
-%          0.1 0.5 0.5 0.5 0.1;
-%          0.1 0.1 0.5 0.5 0.5;
-%          0.5 0.1 0.1 0.5 0.5;
-%          0.5 0.5 0.1 0.1 0.5];
+p_vec = [0 0 0 0;
+         0 pi 0 pi;
+         0 pi pi 0;
+         0 5 2 5];
      
-b_N = size(b_vec,1);  % number of b sets to plot
+p_N = size(p_vec,1);  % number of b sets to plot
 
 w_N = 200;          % number of w points to plot
 w_start = 0.1;
 w_end = 5;
 w_vec = linspace(w_start,w_end,w_N);
 
-amp_vec = zeros(w_N,b_N);
+amp_vec = zeros(w_N,p_N);
 
 %% loop
 
-for i = 1:b_N
+for i = 1:p_N
     
-    b = b_vec(i,:);
+    p = p_vec(i,:);
     
     for j = 1:w_N
         w = w_vec(j);
@@ -38,7 +35,7 @@ for i = 1:b_N
         t = 0:0.05:T*50;
 
         % differential equation
-        [t,u] = ode45(@(t,u)rhs(t,u,m,k,b,Fmag,w), t, initial_conditions);
+        [t,u] = ode45(@(t,u)rhs(t,u,m,k,b,Fmag,w,p), t, initial_conditions);
 
         start = round(0.7*size(t));       % approx region when y stabilises
         amp_max = max(u(start(1):size(t),1));
@@ -48,13 +45,12 @@ end
 
 %% plot amplitude graph
 figure;  hold on;
-% b_str = zeros();
-for i = 1:b_N
+for i = 1:p_N
     plot(w_vec,amp_vec(:,i));
 end
-legend(num2str(b_vec));
+legend(num2str(p_vec));
 
-title('Different combinations of b');
+title('Multiple Forcing Functions (Breaking Steps)');
 xlabel('w'); ylabel('Amplitude'); hold off;
 
 % % natural frequencies
@@ -79,11 +75,16 @@ xlabel('w'); ylabel('Amplitude'); hold off;
 % subplot(4,1,4); plot(t,u(:,4), 'k')
 % xlabel('t'); ylabel('y', 'Rotation',0, 'VerticalAlignment','middle','HorizontalAlignment','right');
 % legend('y1','y2', 'y3', 'y4');
+
+% t_new = 0:0.05:T*5;
+% F1 = -Fmag*sin(w*t_new);
+% F2 = -Fmag*sin(w*t_new+pi/2);
+% F3 = -Fmag*sin(w*t_new+pi);
+% F4 = -Fmag*sin(w*t_new+3*pi/2);
 % 
-% % F = -Fmag*sin(w*t);
-% % subplot(2,1,2); plot(t,F,'b');
-% % xlabel('t'); ylabel('F', 'Rotation',0, 'VerticalAlignment','middle','HorizontalAlignment','right'); 
-% % legend('F');
+% plot(t_new,F1,t_new,F2,t_new,F3,t_new,F4);
+% xlabel('t'); ylabel('F'); 
+% legend('F1','F2','F3','F4');
 
 %% video
 % 
@@ -142,7 +143,7 @@ xlabel('w'); ylabel('Amplitude'); hold off;
 % close(fig); %close the figure  
 
 %% differential equation to solve 
-function dudt = rhs(t,u,m,k,b,Fmag,w)
+function dudt = rhs(t,u,m,k,b,Fmag,w,p)
     
     y1 = u(1);
     y2 = u(2);
@@ -170,16 +171,19 @@ function dudt = rhs(t,u,m,k,b,Fmag,w)
     b4 = b(4);
     b5 = b(5);
     
-    F = -Fmag*sin(w*t);
+    F1 = -Fmag*sin(w*t+p(1));
+    F2 = -Fmag*sin(w*t+p(2));
+    F3 = -Fmag*sin(w*t+p(3));
+    F4 = -Fmag*sin(w*t+p(4));
     
     dudt = zeros(8,1);
     dudt(1) = u(5);
     dudt(2) = u(6);
     dudt(3) = u(7);
     dudt(4) = u(8);
-    dudt(5) = (1/m1)*(-k1*y1-k2*(y1-y2)-b1*(y1d)-b2*(y1d-y2d)+F);  
-    dudt(6) = (1/m2)*(-k2*(y2-y1)-k3*(y2-y3)-b2*(y2d-y1d)-b3*(y2d-y3d));
-    dudt(7) = (1/m3)*(-k3*(y3-y2)-k4*(y3-y4)-b3*(y3d-y2d)-b4*(y3d-y2d));
-    dudt(8) = (1/m4)*(-k4*(y4-y3)-k5*(y4)-b4*(y4d-y3d)-b5*(y4d));
+    dudt(5) = (1/m1)*(-k1*y1-k2*(y1-y2)-b1*(y1d)-b2*(y1d-y2d)+F1);  
+    dudt(6) = (1/m2)*(-k2*(y2-y1)-k3*(y2-y3)-b2*(y2d-y1d)-b3*(y2d-y3d)+F2);
+    dudt(7) = (1/m3)*(-k3*(y3-y2)-k4*(y3-y4)-b3*(y3d-y2d)-b4*(y3d-y2d)+F3);
+    dudt(8) = (1/m4)*(-k4*(y4-y3)-k5*(y4)-b4*(y4d-y3d)-b5*(y4d)+F4);
  
 end
